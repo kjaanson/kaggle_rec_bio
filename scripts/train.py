@@ -32,6 +32,9 @@ from retry import retry
 
 import argparse
 
+import time
+import joblib
+
 # Helper class for real-time logging
 class CheckpointCallback(keras.callbacks.Callback):
     def __init__(self, run):
@@ -44,13 +47,19 @@ class CheckpointCallback(keras.callbacks.Callback):
         return
 
     def on_epoch_begin(self, epoch, logs={}):
+        self.epoch_time_start = time.time()
         return
 
     def on_epoch_end(self, epoch, logs={}):
-        self.run.log('Training accuracy', logs.get('acc'))
+        self.run.log('Training accuracy', logs.get('accuracy'))
         self.run.log('Training loss', logs.get('loss'))
-        self.run.log('Validation accuracy', logs.get('val_acc'))
+        self.run.log('Validation accuracy', logs.get('val_accuracy'))
         self.run.log('Validation loss', logs.get('val_loss'))
+        
+        epoch_time=time.time() - self.epoch_time_start
+        
+        self.run.log('Epoch time', epoch_time)
+        
         return
 
     def on_batch_begin(self, batch, logs={}):
@@ -73,17 +82,21 @@ if __name__ == "__main__":
     
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     
+    os.makedirs('./outputs', exist_ok=True)
+    
     archive = zipfile.ZipFile(data_file,'r')
     
     test_data = pd.read_csv(BytesIO(archive.read('test.csv')))
     print("Shape of test_data:", test_data.shape)
     test_data.head()
     
-    train_data = pd.read_csv(BytesIO(archive.read('train.csv'))).sample(frac=0.25)
+    train_data = pd.read_csv(BytesIO(archive.read('train.csv')))
     print("Shape of train_data:", train_data.shape)
     train_data.head()
     
     sirna_label_encoder = LabelEncoder().fit(train_data.sirna)
+    
+    joblib.dump(sirna_label_encoder, './outputs/sirna_label_encoder.joblib')
     
     @retry(tries=3)
     def get_input(experiment, plate, well, site, channel, train=True):
@@ -108,7 +121,9 @@ if __name__ == "__main__":
                 path = f"{base_path}/{experiment}/Plate{plate}/{well}_s2_w{str(channel)}.png"
                 img = Image.open(BytesIO(archive.read(path)))
 
-        return(img)
+        imgr = img.resize( (224,224) )
+    
+        return imgr
     
     class ImgGen(Sequence):
         def __init__(self, label_data, batch_size = 32, preprocess=(lambda x: x), shuffle=False):
@@ -160,9 +175,9 @@ if __name__ == "__main__":
         return image
     
     def create_model():
-        effnet = EfficientNetB0(weights='imagenet',include_top=False,input_shape=(512, 512, 3))
-        site1 = Input(shape=(512,512,3))
-        site2 = Input(shape=(512,512,3))
+        effnet = EfficientNetB0(weights='imagenet',include_top=False,input_shape=(224, 224, 3))
+        site1 = Input(shape=(224,224,3))
+        site2 = Input(shape=(224,224,3))
         x = effnet(site1)
         x = GlobalAveragePooling2D()(x)
         x = Model(inputs=site1, outputs=x)
@@ -178,15 +193,14 @@ if __name__ == "__main__":
 
         return model
 
+    model = create_model()
+
     run = Run.get_submitted_run()
-    
-    
-    
     
     model = create_model()
     
     test_size = 0.025
-    batch_size = 4
+    batch_size = 8
     
     run.log('Batch Size', batch_size)
     run.log('Test size', test_size)
@@ -204,7 +218,7 @@ if __name__ == "__main__":
     print(f"Training set batched size {len(train_gen)}")
     print(f"Validation set batched size {len(val_gen)}")
     
-    os.makedirs('./outputs', exist_ok=True)
+    
     filepath = './outputs/ModelCheckpoint_all.h5'
     
     callback = [
@@ -213,7 +227,7 @@ if __name__ == "__main__":
     
     history = model.fit(train_gen, 
                         steps_per_epoch=len(train)//batch_size, 
-                        epochs=10, 
+                        epochs=25, 
                         verbose=1, 
                         validation_data=val_gen,
                         validation_steps=len(val)//batch_size,
