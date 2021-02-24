@@ -72,10 +72,15 @@ class CheckpointCallback(keras.callbacks.Callback):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-file', type=str, dest='data_file', help='data folder mounting point')
+    parser.add_argument('--epochs', type=int, help='number of epochs to train')
+    parser.add_argument('--train-frac', type=float, default=1.0, help='fraction of training data to take in')
+
     args = parser.parse_args()
     
     data_file = args.data_file
-    
+
+    learning_rate = 0.001
+
     print("============================================")
     
     print("Input dataset: " + data_file)
@@ -148,9 +153,9 @@ if __name__ == "__main__":
             x_s1_c2 = [np.array(get_input(e, p, w, site=1, channel=2))/255 for e, p, w in batch_x.values.tolist()]
             x_s1_c3 = [np.array(get_input(e, p, w, site=1, channel=3))/255 for e, p, w in batch_x.values.tolist()]
 
-            x_s2_c1 = [np.array(get_input(e, p, w, site=2, channel=1))/255 for e, p, w in batch_x.values.tolist()]
-            x_s2_c2 = [np.array(get_input(e, p, w, site=2, channel=2))/255 for e, p, w in batch_x.values.tolist()]
-            x_s2_c3 = [np.array(get_input(e, p, w, site=2, channel=3))/255 for e, p, w in batch_x.values.tolist()]
+            x_s2_c1 = [np.array(get_input(e, p, w, site=1, channel=4))/255 for e, p, w in batch_x.values.tolist()]
+            x_s2_c2 = [np.array(get_input(e, p, w, site=1, channel=5))/255 for e, p, w in batch_x.values.tolist()]
+            x_s2_c3 = [np.array(get_input(e, p, w, site=1, channel=6))/255 for e, p, w in batch_x.values.tolist()]
 
             x1 = np.array([x_s1_c1,x_s1_c2,x_s1_c3]).transpose((1,2,3,0))
             x2 = np.array([x_s2_c1,x_s2_c2,x_s2_c3]).transpose((1,2,3,0))
@@ -178,17 +183,20 @@ if __name__ == "__main__":
         effnet = EfficientNetB0(weights='imagenet',include_top=False,input_shape=(224, 224, 3))
         site1 = Input(shape=(224,224,3))
         site2 = Input(shape=(224,224,3))
+
         x = effnet(site1)
         x = GlobalAveragePooling2D()(x)
         x = Model(inputs=site1, outputs=x)
+
         y = effnet(site2)
         y = GlobalAveragePooling2D()(y)
         y = Model(inputs=site2, outputs=y)
+
         combined = concatenate([x.output, y.output])
         z = Dropout(0.5)(combined)
         z = Dense(1108, activation='softmax')(z)
         model = Model(inputs=[x.input, y.input], outputs=z)
-        model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(0.0001), metrics=['accuracy'])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate), metrics=['accuracy'])
         model.summary()
 
         return model
@@ -203,7 +211,9 @@ if __name__ == "__main__":
     batch_size = 8
     
     run.log('Batch Size', batch_size)
-    run.log('Test size', test_size)
+    run.log('Test fraction', test_size)
+    run.log('Training samples', len(train_data))
+    run.log('Learning rate', learning_rate)
     
     aml_callback = CheckpointCallback(run)
     
