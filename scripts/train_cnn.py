@@ -80,6 +80,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     data_file = args.data_file
+    epochs = args.epochs
 
     learning_rate = 0.001
 
@@ -196,13 +197,16 @@ if __name__ == "__main__":
     
     aml_callback = CheckpointCallback(run)
     
+    #resampling entire training dataset
+    train_data = train_data.sample(frac=1).reset_index(drop=True)
+
     train, val = train_test_split(train_data, test_size=test_size)
     
     print(f"Training set size {len(train)}")
     print(f"Validation set size {len(val)}")
     
-    train_gen = ImgGen(train,batch_size=batch_size,preprocess=augment,shuffle=True)
-    val_gen = ImgGen(val,batch_size=batch_size,preprocess=augment,shuffle=True)
+    train_gen = ImgGen(train,batch_size=batch_size,shuffle=True)
+    val_gen = ImgGen(val,batch_size=batch_size,shuffle=True)
     
     print(f"Training set batched size {len(train_gen)}")
     print(f"Validation set batched size {len(val_gen)}")
@@ -216,7 +220,7 @@ if __name__ == "__main__":
     
     history = model.fit(train_gen, 
                         steps_per_epoch=len(train)//batch_size, 
-                        epochs=25, 
+                        epochs=epochs, 
                         verbose=1, 
                         validation_data=val_gen,
                         validation_steps=len(val)//batch_size,
