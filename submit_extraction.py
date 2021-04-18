@@ -8,10 +8,12 @@ from azureml.core.compute_target import ComputeTargetException
 from azureml.core import ScriptRunConfig
 from azureml.core.compute import ComputeInstance
 workspace = Workspace.from_config()
-instance = ComputeTarget(workspace=workspace, name='cpu-cluster')
+instance = ComputeTarget(workspace=workspace, name='cpu-compute-low')
 dataset_v5 = Dataset.get_by_name(workspace, name='recursionbio_zip', version=5)
-dataset_target = Dataset.get_by_name(workspace, name='recbio_images')
+dataset_target = Dataset.get_by_name(workspace, name='recursionbio_zip')
 tf_env = Environment.get(workspace=workspace, name='AzureML-TensorFlow-2.3-GPU')
+tf_env = tf_env.clone(new_name='extraction')
+tf_env.python.conda_dependencies.add_pip_package('tqdm')
 
 extract_script = ScriptRunConfig(
     source_directory='./scripts',

@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument('--output-path', type=str, dest='output_path', help='output path', default=".")
     args = parser.parse_args()
 
-    print(f"Extracting f{args.data_file} to {args.output_path}")
+    print(f"Extracting {args.data_file} to {args.output_path}")
 
     os.makedirs(args.output_path, exist_ok=True)
 
