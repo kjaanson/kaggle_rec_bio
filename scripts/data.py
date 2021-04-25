@@ -94,11 +94,17 @@ class ImgGen(Sequence):
         self.preprocess=preprocess
         self.path=path
         self.label_encoder=label_encoder
+
+        self._batches=dict()
         
     def __len__(self):
         return int(np.ceil(len(self.label_data))/float(self.batch_size))
 
     def __getitem__(self, i):
+
+        if i in self._batches:
+            return self._batches[i]
+
         
         batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size,("experiment","plate","well")]
         batch_y = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size,("sirna")]
@@ -115,6 +121,10 @@ class ImgGen(Sequence):
         x2 = np.array([x_s1_c4,x_s1_c5,x_s1_c6]).transpose((1,2,3,0))
         
         y = self.label_encoder.transform(batch_y)
+
+        batch = [np.array(x1), np.array(x2)], y
+
+        self._batches[i]=batch
         
-        return [np.array(x1), np.array(x2)], y
+        return batch
 

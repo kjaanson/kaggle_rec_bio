@@ -47,12 +47,13 @@ if __name__ == "__main__":
     parser.add_argument('--data-path', type=str, dest='data_path', help='data folder mounting point')
     parser.add_argument('--epochs', type=int, help='number of epochs to train')
     parser.add_argument('--batch', type=int, help='number of epochs to train')
-    parser.add_argument('--train-frac', type=float, default=1.0, help='fraction of training data to take in')
+    parser.add_argument('--train-frac', type=float, default=1.0, dest='train_frac', help='fraction of training data to take in')
 
     args = parser.parse_args()
     
     data_path = args.data_path
     epochs = args.epochs
+    training_fraction = args.train_frac
 
     learning_rate = 0.001
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     aml_callback = CheckpointCallback(run)
     
     #resampling entire training dataset
-    train_data = train_data.sample(frac=1).reset_index(drop=True)
+    train_data = train_data.sample(frac=training_fraction).reset_index(drop=True)
 
     train, val = train_test_split(train_data, test_size=test_size)
     
