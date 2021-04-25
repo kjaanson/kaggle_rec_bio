@@ -46,6 +46,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-path', type=str, dest='data_path', help='data folder mounting point')
     parser.add_argument('--epochs', type=int, help='number of epochs to train')
+    parser.add_argument('--batch', type=int, help='number of epochs to train')
     parser.add_argument('--train-frac', type=float, default=1.0, help='fraction of training data to take in')
 
     args = parser.parse_args()
@@ -77,10 +78,10 @@ if __name__ == "__main__":
 
     run = Run.get_submitted_run()
     
-    model = models.create_cnn_model()
+    model = models.create_first_model()
     
     test_size = 0.025
-    batch_size = 8
+    batch_size = args.batch
     
     run.log('Batch Size', batch_size)
     run.log('Test fraction', test_size)
