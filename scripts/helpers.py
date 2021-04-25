@@ -3,6 +3,8 @@ import random
 
 import tensorflow.keras as keras
 
+import time
+
 class CheckpointCallback(keras.callbacks.Callback):
     def __init__(self, run):
         self.run = run
@@ -30,8 +32,16 @@ class CheckpointCallback(keras.callbacks.Callback):
         return
 
     def on_batch_begin(self, batch, logs={}):
+
+        self.batch_time_start = time.time()
+
         return
 
     def on_batch_end(self, batch, logs={}):
+
+        batch_time=time.time() - self.batch_time_start
+
+        self.run.log('Batch time', batch_time)
+        
         return
 
