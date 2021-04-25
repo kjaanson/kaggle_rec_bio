@@ -3,7 +3,6 @@
 import os
 import argparse
 import zipfile
-import concurrent.futures
 import time
 from tqdm import tqdm
 
