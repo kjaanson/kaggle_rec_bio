@@ -39,7 +39,7 @@ import models
 
 from helpers import CheckpointCallback
 
-from data import ImgGen
+from data import ImgGen, get_center_box
 
 
 if __name__ == "__main__":
@@ -98,8 +98,8 @@ if __name__ == "__main__":
     print(f"Training set size {len(train)}")
     print(f"Validation set size {len(val)}")
     
-    train_gen = ImgGen(train, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, shuffle=True)
-    val_gen = ImgGen(val, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, shuffle=True)
+    train_gen = ImgGen(train, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, preprocess=get_center_box, shuffle=True)
+    val_gen = ImgGen(val, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, preprocess=get_center_box, shuffle=True)
     
     print(f"Training set batched size {len(train_gen)}")
     print(f"Validation set batched size {len(val_gen)}")
