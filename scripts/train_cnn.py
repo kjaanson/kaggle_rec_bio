@@ -37,151 +37,43 @@ import joblib
 
 import models
 
-# Helper class for real-time logging
-class CheckpointCallback(keras.callbacks.Callback):
-    def __init__(self, run):
-        self.run = run
+from helpers import CheckpointCallback
 
-    def on_train_begin(self, logs={}):
-        return
-
-    def on_train_end(self, logs={}):
-        return
-
-    def on_epoch_begin(self, epoch, logs={}):
-        self.epoch_time_start = time.time()
-        return
-
-    def on_epoch_end(self, epoch, logs={}):
-        self.run.log('Training accuracy', logs.get('accuracy'))
-        self.run.log('Training loss', logs.get('loss'))
-        self.run.log('Validation accuracy', logs.get('val_accuracy'))
-        self.run.log('Validation loss', logs.get('val_loss'))
-        
-        epoch_time=time.time() - self.epoch_time_start
-        
-        self.run.log('Epoch time', epoch_time)
-        
-        return
-
-    def on_batch_begin(self, batch, logs={}):
-        return
-
-    def on_batch_end(self, batch, logs={}):
-        return
+from data import ImgGen
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data-file', type=str, dest='data_file', help='data folder mounting point')
+    parser.add_argument('--data-path', type=str, dest='data_path', help='data folder mounting point')
     parser.add_argument('--epochs', type=int, help='number of epochs to train')
     parser.add_argument('--train-frac', type=float, default=1.0, help='fraction of training data to take in')
 
     args = parser.parse_args()
     
-    data_file = args.data_file
+    data_path = args.data_path
     epochs = args.epochs
 
     learning_rate = 0.001
 
     print("============================================")
     
-    print("Input dataset: " + data_file)
+    print("Input dataset: " + data_path)
     
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     
     os.makedirs('./outputs', exist_ok=True)
     
-    archive = zipfile.ZipFile(data_file,'r')
-    
-    test_data = pd.read_csv(BytesIO(archive.read('test.csv')))
+    test_data = pd.read_csv(f"{data_path}/test.csv")
     print("Shape of test_data:", test_data.shape)
     test_data.head()
     
-    train_data = pd.read_csv(BytesIO(archive.read('train.csv')))
+    train_data = pd.read_csv(f"{data_path}/train.csv")
     print("Shape of train_data:", train_data.shape)
     train_data.head()
     
     sirna_label_encoder = LabelEncoder().fit(train_data.sirna)
     
-    joblib.dump(sirna_label_encoder, './outputs/sirna_label_encoder.joblib')
-    
-    @retry(tries=3)
-    def get_input(experiment, plate, well, site, channel, train=True):
-        if train==True:
-            base_path = 'train'
-        else:
-            base_path = 'test'
-
-        try:
-            path = f"{base_path}/{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
-            img = Image.open(BytesIO(archive.read(path)))
-        except KeyError as err:
-            print(f"Error loading input - {err}")
-            print("Will default to other site")
-
-            # hack mis aitab kahe puuduva pildi puhul
-            # pm kui puudub pilt siis proovib lihtsalt teist saiti võtta
-            if site==2:
-                path = f"{base_path}/{experiment}/Plate{plate}/{well}_s1_w{str(channel)}.png"
-                img = Image.open(BytesIO(archive.read(path)))
-            else:
-                path = f"{base_path}/{experiment}/Plate{plate}/{well}_s2_w{str(channel)}.png"
-                img = Image.open(BytesIO(archive.read(path)))
-
-        imgr = img.resize( (224,224) )
-    
-        return imgr
-    
-    class ImgGen(Sequence):
-        def __init__(self, label_data, batch_size = 32, preprocess=(lambda x: x), shuffle=False):
-
-            if shuffle:
-                self.label_data=label_data.sample(frac=1).reset_index(drop=True)
-            else:
-                self.label_data=label_data
-
-            self.batch_size=batch_size
-            self.preprocess=preprocess
-
-        def __len__(self):
-            return int(np.ceil(len(self.label_data))/float(self.batch_size))
-
-        def __getitem__(self, i):
-
-            batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size,("experiment","plate","well")]
-            batch_y = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size,("sirna")]
-
-            x_s1_c1 = [np.array(get_input(e, p, w, site=1, channel=1))/255 for e, p, w in batch_x.values.tolist()]
-            x_s1_c2 = [np.array(get_input(e, p, w, site=1, channel=2))/255 for e, p, w in batch_x.values.tolist()]
-            x_s1_c3 = [np.array(get_input(e, p, w, site=1, channel=3))/255 for e, p, w in batch_x.values.tolist()]
-
-            x_s2_c1 = [np.array(get_input(e, p, w, site=1, channel=4))/255 for e, p, w in batch_x.values.tolist()]
-            x_s2_c2 = [np.array(get_input(e, p, w, site=1, channel=5))/255 for e, p, w in batch_x.values.tolist()]
-            x_s2_c3 = [np.array(get_input(e, p, w, site=1, channel=6))/255 for e, p, w in batch_x.values.tolist()]
-
-            x1 = np.array([x_s1_c1,x_s1_c2,x_s1_c3]).transpose((1,2,3,0))
-            x2 = np.array([x_s2_c1,x_s2_c2,x_s2_c3]).transpose((1,2,3,0))
-
-            y = sirna_label_encoder.transform(batch_y)
-
-            return [np.array(x1), np.array(x2)], y
-        
-        
-    def augment(image):
-        random_transform = random.randint(-1,4)
-        if random_transform==0:
-            image = image.rotate(random.randint(-5,5))
-        if random_transform==1:
-            image = image.filter(ImageFilter.GaussianBlur(radius=1))
-        if random_transform==2:
-            image = image.filter(ImageFilter.RankFilter(size=3, rank=1))
-        if random_transform==3:
-            image = image.filter(ImageFilter.MedianFilter(size=3))
-        if random_transform==4:
-            image = image.filter(ImageFilter.MaxFilter(size=3))
-        return image
-    
+    joblib.dump(sirna_label_encoder, './outputs/sirna_label_encoder.joblib')    
 
     run = Run.get_submitted_run()
     
@@ -205,8 +97,8 @@ if __name__ == "__main__":
     print(f"Training set size {len(train)}")
     print(f"Validation set size {len(val)}")
     
-    train_gen = ImgGen(train,batch_size=batch_size,shuffle=True)
-    val_gen = ImgGen(val,batch_size=batch_size,shuffle=True)
+    train_gen = ImgGen(train, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, shuffle=True)
+    val_gen = ImgGen(val, label_encoder=sirna_label_encoder, path=data_path, batch_size=batch_size, shuffle=True)
     
     print(f"Training set batched size {len(train_gen)}")
     print(f"Validation set batched size {len(val_gen)}")
