@@ -4,3 +4,4 @@
 input
 /**/__pycache__
 /**/.amlignore.amltmp
+.vscode
