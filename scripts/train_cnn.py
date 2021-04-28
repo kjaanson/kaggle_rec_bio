@@ -39,7 +39,7 @@ import models
 
 from helpers import CheckpointCallback
 
-from data import ImgGen, get_center_box
+from data_new import ImgGen, get_center_box
 
 
 if __name__ == "__main__":
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     run = Run.get_submitted_run()
     
-    model = models.create_first_model()
+    model = models.create_cnn_model()
     
     test_size = 0.025
     batch_size = args.batch

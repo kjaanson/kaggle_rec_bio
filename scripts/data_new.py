@@ -10,8 +10,14 @@ from PIL import Image, ImageFilter
 from tensorflow.keras.utils import Sequence
 from joblib import Parallel, delayed
 
+import logging
 
-@retry(tries=3)
+FORMAT = '%(asctime)-15s %(message)s'
+logging.basicConfig(format=FORMAT)
+
+logger = logging.getLogger("imgloader")
+logger.setLevel(logging.INFO)
+
 def get_input(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), train=True, path='./input/recbio'):
     
     if train==True:
@@ -19,12 +25,14 @@ def get_input(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), train=Tru
     else:
         base_path = f'{path}/test'
     
-
     def load_image(channel):
 
         try:
             path = f"{base_path}/{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
+            
+            logger.info(f"Loading image {path}")
             img = Image.open(path)
+            
         except FileNotFoundError as err:
             print(f"Error loading input - {err}")
             print("Will default to other site")
@@ -92,13 +100,7 @@ def get_random_subbox(image, shape_w_h=(224,224)):
     
     return cropped
 
-import logging
 
-FORMAT = '%(asctime)-15s %(message)s'
-logging.basicConfig(format=FORMAT)
-
-logger = logging.getLogger("imgloader")
-logger.setLevel(logging.ERROR)
 
 
 def get_channels(e, p, w, site, path, preprocess):
@@ -127,7 +129,7 @@ def get_channels(e, p, w, site, path, preprocess):
 
     c4_c6_img = np.array([x_s1_c4,x_s1_c5,x_s1_c6])
 
-    c1_c6_img_array = np.append(c1_c3_img, c1_c3_img, axis=0)
+    c1_c6_img_array = np.append(c1_c3_img, c4_c6_img, axis=0)
     logger.info(f"Image array shape: {c1_c6_img_array.shape}")
 
     logger.info("Loading channels compete")
@@ -147,12 +149,23 @@ class ImgGen(Sequence):
         self.preprocess=preprocess
         self.path=path
         self.label_encoder=label_encoder
+        
+        self._batches=dict()
 
         
     def __len__(self):
-        return int(np.ceil(len(self.label_data))/float(self.batch_size))
+
+        logger.info(f"Batch size {self.batch_size}")
+        logger.info(f"Label data {len(self.label_data)}")
+        batches = np.ceil(len(self.label_data)/float(self.batch_size))
+        logger.info(f"Nr of batches {batches}")
+
+        return int(batches)
 
     def __getitem__(self, i):
+        
+        if i in self._batches:
+            return self._batches[i]
 
         logger.info("Taking batches")
         batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("experiment","plate","well")]
@@ -179,6 +192,8 @@ class ImgGen(Sequence):
         logger.info(f"X sixe: {len(X)}, x size {len(x)}, X shape: {X.shape}")
 
         batch = X, y
+        
+        self._batches[i]=batch
         
         return batch
 

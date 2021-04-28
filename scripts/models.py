@@ -38,13 +38,10 @@ def create_cnn_model(learning_rate=0.001):
     CNN model
     """
 
-    input_data_1 = Input(name="input_image_c1_c3",shape=(224,224,3))
-    input_data_2 = Input(name="input_image_c4_c6",shape=(224,224,3))
-
-    input_data = keras.layers.Concatenate()([input_data_1, input_data_2])
+    input_data = Input(name="input_image",shape=(6,224,224))
 
     cnn_seq = Sequential([
-        Convolution2D(filters=64, kernel_size=(3,3), input_shape=(224,224,6), activation='relu', padding='same',data_format='channels_last'),
+        Convolution2D(filters=64, kernel_size=(3,3), input_shape=(6,224,224), activation='relu', padding='same',data_format='channels_first'),
         Convolution2D(filters=64, kernel_size=(3,3), activation='relu', padding='same'),
         MaxPool2D((2,2)),
         Convolution2D(filters=32, kernel_size=(3,3), activation='relu', padding='same'),
@@ -60,7 +57,7 @@ def create_cnn_model(learning_rate=0.001):
 
     cnn_model = cnn_seq(input_data)
 
-    model = Model(inputs=[input_data_1, input_data_2], outputs=cnn_model)
+    model = Model(inputs=[input_data], outputs=cnn_model)
 
     model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate), metrics=['accuracy'])
     model.summary()
