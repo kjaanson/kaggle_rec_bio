@@ -1,4 +1,5 @@
 
+from functools import cache
 import random
 
 from retry import retry
@@ -6,7 +7,7 @@ from retry import retry
 import numpy as np
 
 from PIL import Image, ImageFilter
-
+from zipfile import ZipFile
 from tensorflow.keras.utils import Sequence
 from joblib import Parallel, delayed
 
@@ -16,45 +17,65 @@ FORMAT = '%(asctime)-15s %(message)s'
 logging.basicConfig(format=FORMAT)
 
 logger = logging.getLogger("imgloader")
-logger.setLevel(logging.INFO)
+#logger.setLevel(logging.INFO)
 
-def get_input(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), train=True, path='./input/recbio'):
-    
-    if train==True:
-        base_path = f'{path}/train'
-    else:
-        base_path = f'{path}/test'
-    
+def get_image_zip(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), path='./data/train.zip'):
+    """
+    Loads image from folder or zip file using given parameters
+    """
+
+    archive = ZipFile(path)
+
     def load_image(channel):
-
         try:
-            path = f"{base_path}/{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
-            
-            logger.info(f"Loading image {path}")
-            img = Image.open(path)
-            
+            path = f"{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
+            img = Image.open(archive.open(path))
         except FileNotFoundError as err:
             print(f"Error loading input - {err}")
             print("Will default to other site")
-            
             # hack mis aitab kahe puuduva pildi puhul
             # pm kui puudub pilt siis proovib lihtsalt teist saiti võtta
             if site==2:
-                path = f"{base_path}/{experiment}/Plate{plate}/{well}_s1_w{str(channel)}.png"
-                img = Image.open(path)
+                path = f"{experiment}/Plate{plate}/{well}_s1_w{str(channel)}.png"
+                img = Image.open(archive.open(path))
+
             else:
-                path = f"{base_path}/{experiment}/Plate{plate}/{well}_s2_w{str(channel)}.png"
-                img = Image.open(path)
+                path = f"{experiment}/Plate{plate}/{well}_s2_w{str(channel)}.png"
+                img = Image.open(archive.open(path))
 
         return img
 
-    #img_channels = Parallel(n_jobs=6)(delayed(load_image)(c) for c in channels)
-    
     img_channels = [load_image(c) for c in channels]
-
 
     return img_channels
 
+def get_image(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), path='../data/train/'):
+    """
+    Loads image from folder or zip file using given parameters
+    """
+
+    def load_image(channel):
+        try:
+            _path = f"{path}{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
+            img = Image.open(_path)
+        except FileNotFoundError as err:
+            print(f"Error loading input - {err}")
+            print("Will default to other site")
+            # hack mis aitab kahe puuduva pildi puhul
+            # pm kui puudub pilt siis proovib lihtsalt teist saiti võtta
+            if site==2:
+                _path = f"{path}{experiment}/Plate{plate}/{well}_s1_w{str(channel)}.png"
+                img = Image.open(_path)
+
+            else:
+                _path = f"{path}{experiment}/Plate{plate}/{well}_s2_w{str(channel)}.png"
+                img = Image.open(_path)
+
+        return img
+
+    img_channels = [load_image(c) for c in channels]
+
+    return img_channels
 
 def augment(image):
 
@@ -106,7 +127,7 @@ def get_random_subbox(image, shape_w_h=(224,224)):
 def get_channels(e, p, w, site, path, preprocess):
 
     logger.info(f"Experiment {e}, plate {p}, well {w}")
-    img_chs = get_input(e, p, w, site=site, path=path)
+    img_chs = get_image(e, p, w, site=site, path=path)
 
     logger.info(f"Got channels: {len(img_chs)}")
 
@@ -138,7 +159,7 @@ def get_channels(e, p, w, site, path, preprocess):
 
 
 class ImgGen(Sequence):
-    def __init__(self, label_data, label_encoder, path, batch_size = 32, preprocess=(lambda x: x), shuffle=False):
+    def __init__(self, label_data, label_encoder, path, batch_size = 32, cache=False, preprocess=(lambda x: x), shuffle=False):
     
         if shuffle:
             self.label_data=label_data.sample(frac=1).reset_index(drop=True)
@@ -164,8 +185,9 @@ class ImgGen(Sequence):
 
     def __getitem__(self, i):
         
-        if i in self._batches:
-            return self._batches[i]
+        if cache:
+            if i in self._batches:
+                return self._batches[i]
 
         logger.info("Taking batches")
         batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("experiment","plate","well")]
@@ -193,7 +215,8 @@ class ImgGen(Sequence):
 
         batch = X, y
         
-        self._batches[i]=batch
+        if cache:
+            self._batches[i]=batch
         
         return batch
 
