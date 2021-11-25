@@ -190,7 +190,7 @@ class ImgGen(Sequence):
                 return self._batches[i]
 
         logger.info("Taking batches")
-        batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("experiment","plate","well")]
+        batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("experiment","plate","well","site")]
         
         logger.info(batch_x)
         
@@ -201,7 +201,7 @@ class ImgGen(Sequence):
         logger.info("Starting batch loading")        
         x = list()
 
-        x = Parallel(n_jobs=-1)(delayed(get_channels)(e, p, w, 1, self.path, self.preprocess) for e, p, w in batch_x.values.tolist())
+        x = Parallel(n_jobs=-1)(delayed(get_channels)(e, p, w, s, self.path, self.preprocess) for e, p, w, s in batch_x.values.tolist())
         
         logger.info("Finished batch loading")        
 

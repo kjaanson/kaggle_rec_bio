@@ -48,7 +48,17 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 train_data_all = pd.read_csv("../data/train.csv")
 print("Shape of train_data_all:", train_data_all.shape)
 
-train_data_all=train_data_all.loc[train_data_all.sirna.isin(["sirna_706","sirna_1046","sirna_586","sirna_747"]),:]
+sirnas=[
+    "sirna_706","sirna_1046","sirna_1045","sirna_586","sirna_747",
+    "sirna_705","sirna_1044","sirna_1043","sirna_1042","sirna_1041",
+]
+
+train_data_all=train_data_all.loc[train_data_all.sirna.isin(sirnas),:]
+
+train_data_all.loc[:,["site"]]="1"
+train_data_second_site=train_data_all.copy()
+train_data_second_site.loc[:,["site"]]="2"
+train_data_all=pd.concat([train_data_all,train_data_second_site],axis=0)
 
 sirna_label_encoder_all = LabelEncoder().fit(train_data_all.sirna)
 print(f"Sirna classes in train_data_all {len(sirna_label_encoder_all.classes_)}")
@@ -81,16 +91,20 @@ from tensorflow import keras
 model = keras.Sequential(
     [
         keras.Input(shape=(6,224,224)),
-        layers.Conv2D(32, kernel_size=(3, 3), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv2D(32, kernel_size=(4, 4), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
         layers.MaxPooling2D(pool_size=(2, 2)),
         layers.Conv2D(64, kernel_size=(3, 3), activation="relu", padding="same"),
-        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.AveragePooling2D(pool_size=(2, 2)),
         layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
         layers.SpatialDropout2D(0.5),
-        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.AveragePooling2D(pool_size=(6, 6)),
         layers.Flatten(),
+        layers.Dense(4000, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
+        layers.Dropout(0.5),
         layers.Dense(2000, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
         layers.Dropout(0.5),
+        layers.Dense(200, activation='relu'),
+        layers.Dropout(0.2),
         layers.Dense(len(sirna_label_encoder_sample_1.classes_), activation="softmax"),
     ]
 )
@@ -109,7 +123,7 @@ test_size = 0.3
 batch_size = 16
 
 # %%
-train, val = train_test_split(train_data_sample_1, test_size=test_size)
+train, val = train_test_split(train_data_sample_1, test_size=test_size, random_state=42)
 
 # %%
 print(f"Training set size {len(train)}")
@@ -130,7 +144,7 @@ filepath = 'ModelCheckpoint_all.h5'
 
 # %%
 callback = [
-        ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch')
+        #ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch')
         ]
 
 # %%
