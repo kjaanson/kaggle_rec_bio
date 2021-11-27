@@ -59,8 +59,8 @@ def get_image(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), path='../
             _path = f"{path}{experiment}/Plate{plate}/{well}_s{str(site)}_w{str(channel)}.png"
             img = Image.open(_path)
         except FileNotFoundError as err:
-            print(f"Error loading input - {err}")
-            print("Will default to other site")
+            logger.error(f"Error loading input - {err}")
+            logger.info("Will default to other site")
             # hack mis aitab kahe puuduva pildi puhul
             # pm kui puudub pilt siis proovib lihtsalt teist saiti võtta
             if site==2:
@@ -106,20 +106,27 @@ def get_random_subbox(image, shape_w_h=(224,224)):
     w = image.width
     h = image.height
     
-    print(f"Image w, h: {w},{h}")
+    logger.debug(f"Image w, h: {w},{h}")
     
     random_w = random.randint(0, w - shape_w_h[0])
     random_h = random.randint(0, h - shape_w_h[1])
     
     cropbox = (random_w, random_h, random_w + shape_w_h[0], random_h + shape_w_h[1])
     
-    print(f"Random cropbox: {cropbox}")
+    logger.debug(f"Random cropbox: {cropbox}")
     
     cropped = image.crop( cropbox )
     
-    print(f"Cropped image w, h: {cropped.width}, {cropped.height}")
+    logger.debug(f"Cropped image w, h: {cropped.width}, {cropped.height}")
     
     return cropped
+
+def random_subbox_and_augment(image):
+    """
+    Randomly crops image to 224x224 and augments it
+    """
+    cropped = get_random_subbox(image)
+    return augment(cropped)
 
 
 
@@ -170,6 +177,7 @@ class ImgGen(Sequence):
         self.preprocess=preprocess
         self.path=path
         self.label_encoder=label_encoder
+        self.cache=cache
         
         self._batches=dict()
 
@@ -185,7 +193,7 @@ class ImgGen(Sequence):
 
     def __getitem__(self, i):
         
-        if cache:
+        if self.cache:
             if i in self._batches:
                 return self._batches[i]
 
@@ -215,7 +223,7 @@ class ImgGen(Sequence):
 
         batch = X, y
         
-        if cache:
+        if self.cache:
             self._batches[i]=batch
         
         return batch

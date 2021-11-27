@@ -33,7 +33,7 @@ sys.path.append('../src')
 # %%
 from data_v2 import augment
 from data_v2 import get_center_box
-from data_v2 import get_random_subbox
+from data_v2 import get_random_subbox, random_subbox_and_augment
 from data_v2 import ImgGen
 
 # %%
@@ -95,7 +95,7 @@ model = keras.Sequential(
         layers.MaxPooling2D(pool_size=(2, 2)),
         layers.Conv2D(64, kernel_size=(3, 3), activation="relu", padding="same"),
         layers.AveragePooling2D(pool_size=(2, 2)),
-        layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
+        layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
         layers.SpatialDropout2D(0.5),
         layers.AveragePooling2D(pool_size=(6, 6)),
         layers.Flatten(),
@@ -103,7 +103,7 @@ model = keras.Sequential(
         layers.Dropout(0.5),
         layers.Dense(2000, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
         layers.Dropout(0.5),
-        layers.Dense(200, activation='relu'),
+        layers.Dense(500, activation='relu'),
         layers.Dropout(0.2),
         layers.Dense(len(sirna_label_encoder_sample_1.classes_), activation="softmax"),
     ]
@@ -132,8 +132,8 @@ print(f"Validation set size {len(val)}")
 print(val.sirna.value_counts())
 
 # %%
-train_gen = ImgGen(train,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/')
-val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/')
+train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/')
+val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/',cache=True)
 
 # %%
 print(f"Training set batched size {len(train_gen)}")
@@ -148,14 +148,17 @@ callback = [
         ]
 
 # %%
-history = model.fit(train_gen, 
-                              steps_per_epoch=len(train)//batch_size, 
-                              epochs=500, 
-                              verbose=1, 
-                              validation_data=val_gen,
-                              validation_steps=len(val)//batch_size,
-                              callbacks=callback
-                             )
+try:
+    history = model.fit(train_gen, 
+                                steps_per_epoch=len(train)//batch_size, 
+                                epochs=3000, 
+                                verbose=1, 
+                                validation_data=val_gen,
+                                validation_steps=len(val)//batch_size,
+                                callbacks=callback
+                                )
+except KeyboardInterrupt:
+    print("Training ended early")
 
 # plot history to png
 import matplotlib.pyplot as plt
