@@ -91,19 +91,21 @@ from tensorflow import keras
 model = keras.Sequential(
     [
         keras.Input(shape=(6,224,224)),
-        layers.Conv2D(32, kernel_size=(4, 4), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv2D(64, kernel_size=(4, 4), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
         layers.MaxPooling2D(pool_size=(2, 2)),
-        layers.Conv2D(64, kernel_size=(3, 3), activation="relu", padding="same"),
+        layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
+        layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
         layers.AveragePooling2D(pool_size=(2, 2)),
         layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
+        #layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
         layers.SpatialDropout2D(0.5),
         layers.AveragePooling2D(pool_size=(6, 6)),
         layers.Flatten(),
-        layers.Dense(4000, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
+        layers.Dense(512, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
         layers.Dropout(0.5),
-        layers.Dense(2000, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
+        layers.Dense(256, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
         layers.Dropout(0.5),
-        layers.Dense(500, activation='relu'),
+        layers.Dense(128, activation='relu'),
         layers.Dropout(0.2),
         layers.Dense(len(sirna_label_encoder_sample_1.classes_), activation="softmax"),
     ]
@@ -144,14 +146,14 @@ filepath = 'ModelCheckpoint_all.h5'
 
 # %%
 callback = [
-        #ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch')
+        ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch')
         ]
 
 # %%
 try:
     history = model.fit(train_gen, 
                                 steps_per_epoch=len(train)//batch_size, 
-                                epochs=3000, 
+                                epochs=1000, 
                                 verbose=1, 
                                 validation_data=val_gen,
                                 validation_steps=len(val)//batch_size,
@@ -172,6 +174,6 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper left')
 plt.savefig('accuracy.png')
-plt.show()
+#plt.show()
 
 
