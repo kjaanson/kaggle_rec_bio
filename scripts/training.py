@@ -80,23 +80,16 @@ if __name__ == "__main__":
     print(f"Sirna classes in train_data_sample_1 {len(sirna_label_encoder_sample_1.classes_)}")
 
 
-    # %% [markdown]
-    # Saidid on samast wellist tehtud eri pildid. Pm võib võtta ainult ühe saidi sisse.
-    # Channelid on eri kanalitega tehtud pildid. Neid on kokku 6.
-
-    # %%
-
-
     # %%
     model = keras.Sequential(
         [
             keras.Input(shape=(6,224,224)),
-            layers.Conv2D(64, kernel_size=4, activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
+            layers.Conv2D(64, kernel_size=(4, 4), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
             layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Conv2D(128, kernel_size=3, activation="relu", padding="same"),
-            layers.Conv2D(128, kernel_size=3, activation="relu", padding="same"),
+            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
+            layers.Conv2D(128, kernel_size=(6, 6), activation="relu", padding="same"),
             layers.AveragePooling2D(pool_size=(2, 2)),
-            layers.Conv2D(256, kernel_size=3, activation="relu", padding="same"),
+            layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
             #layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
             layers.SpatialDropout2D(0.5),
             layers.AveragePooling2D(pool_size=(6, 6)),
@@ -106,7 +99,7 @@ if __name__ == "__main__":
             layers.Dense(256, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
             layers.Dropout(0.5),
             layers.Dense(128, activation='relu'),
-            layers.Dropout(0.2),
+            layers.Dropout(0.5),
             layers.Dense(len(sirna_label_encoder_sample_1.classes_), activation="softmax"),
         ]
     )
@@ -153,7 +146,7 @@ if __name__ == "__main__":
     try:
         history = model.fit(train_gen, 
                                     steps_per_epoch=len(train)//batch_size, 
-                                    epochs=500, 
+                                    epochs=1000, 
                                     verbose=1, 
                                     validation_data=val_gen,
                                     validation_steps=len(val)//batch_size,
