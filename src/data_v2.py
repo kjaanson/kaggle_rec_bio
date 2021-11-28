@@ -128,19 +128,10 @@ def random_subbox_and_augment(image):
     cropped = get_random_subbox(image)
     return augment(cropped)
 
+def preprocess_and_scale(img_channels, preprocess):
 
-
-
-def get_channels(e, p, w, site, path, preprocess):
-
-    logger.info(f"Experiment {e}, plate {p}, well {w}")
-    img_chs = get_image(e, p, w, site=site, path=path)
-
-    logger.info(f"Got channels: {len(img_chs)}")
-
-    logger.info("Starting preprocessing")
-    img_prepro = [preprocess(img) for img in img_chs]
-    logger.info("Preprocessing complete")
+    logger.info("Preprocessing images")
+    img_prepro = [preprocess(img) for img in img_channels]
 
     logger.info("Scaling channels")
     x_s1_c1 = np.array(img_prepro[0])/255
@@ -154,7 +145,6 @@ def get_channels(e, p, w, site, path, preprocess):
     logger.info("Scaling channels complete")
 
     c1_c3_img = np.array([x_s1_c1,x_s1_c2,x_s1_c3])
-
     c4_c6_img = np.array([x_s1_c4,x_s1_c5,x_s1_c6])
 
     c1_c6_img_array = np.append(c1_c3_img, c4_c6_img, axis=0)
@@ -163,6 +153,7 @@ def get_channels(e, p, w, site, path, preprocess):
     logger.info("Loading channels compete")
 
     return c1_c6_img_array
+
 
 
 class ImgGen(Sequence):
@@ -186,31 +177,53 @@ class ImgGen(Sequence):
 
         logger.info(f"Batch size {self.batch_size}")
         logger.info(f"Label data {len(self.label_data)}")
-        batches = np.ceil(len(self.label_data)/float(self.batch_size))
+        batches = int(np.ceil(len(self.label_data)/float(self.batch_size)))
         logger.info(f"Nr of batches {batches}")
 
-        return int(batches)
+        return batches
 
     def __getitem__(self, i):
         
-        if self.cache:
-            if i in self._batches:
-                return self._batches[i]
-
-        logger.info("Taking batches")
+        logger.info(f"Getting batch {i}")
         batch_x = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("experiment","plate","well","site")]
         
-        logger.info(batch_x)
+        #logger.debug(batch_x)
         
         batch_y = self.label_data.loc[i*self.batch_size:(i+1)*self.batch_size-1,("sirna")]
         
-        logger.info(batch_y)
+        #logger.debug(batch_y)
 
-        logger.info("Starting batch loading")        
-        x = list()
+        x=list()
 
-        x = Parallel(n_jobs=-1)(delayed(get_channels)(e, p, w, s, self.path, self.preprocess) for e, p, w, s in batch_x.values.tolist())
+        if self.cache and i in self._batches:
+            logger.info("Getting images from memory cache")
+            x_images = self._batches[i]
+        else:
+            logger.info("Loading images from disk")
+            x_images=list()
+            for e, p, w, s in batch_x.itertuples(index=False):
+                logger.info(f"Loading image for {e}, {p}, {w}, {s}")
+                img_channels = get_image(e, p, w, site=s, path=self.path)
+
+                logger.info(f"Got channels: {len(img_channels)}")
+
+                logger.debug(f"Channels: {img_channels}")
+
+                x_images.append(img_channels)
+
+            if self.cache:
+                self._batches[i]=x_images
+
+        logger.info("Done loading/getting images")
+
+        logger.info("Starting preprocessing")
+
+        x = [preprocess_and_scale(img, self.preprocess) for img in x_images]        
+        #wanted to use this but it was too slow
+        #x = Parallel(n_jobs=-1)(delayed(preprocess_and_scale)(img, self.preprocess) for img in x_images)
         
+        logger.info("Preprocessing complete")
+
         logger.info("Finished batch loading")        
 
         y = self.label_encoder.transform(batch_y)
@@ -222,9 +235,6 @@ class ImgGen(Sequence):
         logger.info(f"X sixe: {len(X)}, x size {len(x)}, X shape: {X.shape}")
 
         batch = X, y
-        
-        if self.cache:
-            self._batches[i]=batch
-        
+                
         return batch
 

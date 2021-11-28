@@ -134,7 +134,7 @@ print(f"Validation set size {len(val)}")
 print(val.sirna.value_counts())
 
 # %%
-train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/')
+train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/',cache=True)
 val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/',cache=True)
 
 # %%
