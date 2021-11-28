@@ -47,7 +47,7 @@ import argparse
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--accuracy-img', type=str, default='accuracy.jpeg')
+    parser.add_argument('--exp-prefix', type=str, default='experiment')
 
     args = parser.parse_args()
     
@@ -84,15 +84,16 @@ if __name__ == "__main__":
     model = keras.Sequential(
         [
             keras.Input(shape=(6,224,224)),
-            layers.Conv2D(64, kernel_size=(4, 4), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
+            layers.Conv2D(64, kernel_size=(1, 1), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
+            layers.Conv2D(64, kernel_size=(10, 10), activation="relu", padding="same"),
             layers.MaxPooling2D(pool_size=(2, 2)),
             layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
-            layers.Conv2D(128, kernel_size=(6, 6), activation="relu", padding="same"),
+            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
             layers.AveragePooling2D(pool_size=(2, 2)),
             layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
             #layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
-            layers.SpatialDropout2D(0.5),
             layers.AveragePooling2D(pool_size=(6, 6)),
+            layers.SpatialDropout2D(0.5),
             layers.Flatten(),
             layers.Dense(512, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
             layers.Dropout(0.5),
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     print(f"Validation set batched size {len(val_gen)}")
 
     # %%
-    filepath = 'ModelCheckpoint_all.h5'
+    filepath = f'{args.exp_prefix}_ModelCheckpoint.h5'
 
     # %%
     callback = [
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(args.accuracy_img)
+    plt.savefig(f"{args.exp_prefix}_history.png")
     #plt.show()
 
 
