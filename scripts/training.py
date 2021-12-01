@@ -4,9 +4,11 @@
 # %%
 import os
 import sys
+import joblib
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow.keras.applications import EfficientNetB0,EfficientNetB1
 from tensorflow.python.client import device_lib
 import tensorflow.keras as keras
@@ -35,25 +37,38 @@ from tensorflow import keras
 
 from tqdm import tqdm
 
-sys.path.append('../src')
+sys.path.append('./src')
 
 from data_v2 import augment
 from data_v2 import get_center_box
 from data_v2 import get_random_subbox, random_subbox_and_augment
 from data_v2 import ImgGen
 
+import models
+from helpers import CheckpointCallback
 import argparse
+
+from azureml.core import Run
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-prefix', type=str, default='experiment')
+    parser.add_argument('--batch-size', type=int, default=24)
+    parser.add_argument('--learning-rate', type=float, default=0.00001)
+    parser.add_argument('--epochs', type=int, default=1000)
+    parser.add_argument('--data-path', type=str, dest='data_path', help='data folder mounting point')
 
     args = parser.parse_args()
-    
+
+    data_path = args.data_path
+
+    print("============================================")
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-    train_data_all = pd.read_csv("../data/train.csv")
+    os.makedirs('./outputs', exist_ok=True)
+
+    train_data_all = pd.read_csv(f"{data_path}/train.csv")
     print("Shape of train_data_all:", train_data_all.shape)
 
     sirnas=[
@@ -80,43 +95,18 @@ if __name__ == "__main__":
     print(f"Sirna classes in train_data_sample_1 {len(sirna_label_encoder_sample_1.classes_)}")
 
 
-    # %%
-    model = keras.Sequential(
-        [
-            keras.Input(shape=(6,224,224)),
-            layers.Conv2D(64, kernel_size=(1, 1), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first", kernel_regularizer=keras.regularizers.l2(0.001)),
-            layers.Conv2D(64, kernel_size=(10, 10), activation="relu", padding="same"),
-            layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
-            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same"),
-            layers.AveragePooling2D(pool_size=(2, 2)),
-            layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
-            #layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
-            layers.AveragePooling2D(pool_size=(6, 6)),
-            layers.SpatialDropout2D(0.5),
-            layers.Flatten(),
-            layers.Dense(512, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
-            layers.Dropout(0.5),
-            layers.Dense(256, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
-            layers.Dropout(0.5),
-            layers.Dense(128, activation='relu'),
-            layers.Dropout(0.5),
-            layers.Dense(len(sirna_label_encoder_sample_1.classes_), activation="softmax"),
-        ]
-    )
+    # save encoders to output
+    joblib.dump(sirna_label_encoder_all, f"./outputs/sirna_label_encoder_all.pkl")
+    joblib.dump(sirna_label_encoder_sample_1, f"./outputs/sirna_label_encoder_sample_1.pkl")
 
-    # %%
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(0.0001), metrics=['accuracy'])
 
+    run = Run.get_context()
     # %%
-    model.summary()
-
-    # %% [markdown]
-    # Training model
+    model = models.create_cnn_model_2(learning_rate=args.learning_rate, nr_classes=len(sirna_label_encoder_sample_1.classes_))
 
     # %%
     test_size = 0.3
-    batch_size = 16
+    batch_size = args.batch_size
 
     # %%
     train, val = train_test_split(train_data_sample_1, test_size=test_size, random_state=42)
@@ -127,37 +117,50 @@ if __name__ == "__main__":
     print(f"Validation set size {len(val)}")
     print(val.sirna.value_counts())
 
+    run.log('Batch Size', batch_size)
+    run.log('Test fraction', test_size)
+    run.log('Training samples', len(train))
+    run.log('Learning rate', args.learning_rate)
+    
+
     # %%
-    train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/',cache=True)
-    val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path='../data/train/',cache=True)
+    train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path=f'{data_path}/train/',cache=True)
+    val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path=f'{data_path}/train/',cache=True)
 
     # %%
     print(f"Training set batched size {len(train_gen)}")
     print(f"Validation set batched size {len(val_gen)}")
 
     # %%
-    filepath = f'{args.exp_prefix}_ModelCheckpoint.h5'
+    filepath = f'./outputs/ModelCheckpoint.h5'
+
+    tqdm_callback = tfa.callbacks.TQDMProgressBar()
+    aml_callback = CheckpointCallback(run)
 
     # %%
-    callback = [
-            ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch')
+    callbacks = [
+            ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', save_freq='epoch'),
+            #tqdm_callback,
+            aml_callback
             ]
 
     # %%
     try:
         history = model.fit(train_gen, 
                                     steps_per_epoch=len(train)//batch_size, 
-                                    epochs=1000, 
+                                    epochs=args.epochs, 
                                     verbose=1, 
                                     validation_data=val_gen,
                                     validation_steps=len(val)//batch_size,
-                                    callbacks=callback
+                                    callbacks=callbacks
                                     )
     except KeyboardInterrupt:
         print("Training ended early")
 
+        history = model.history
+
     # plot history to png
-    import matplotlib.pyplot as plt
+    
 
 
     # %%
@@ -167,7 +170,7 @@ if __name__ == "__main__":
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(f"{args.exp_prefix}_history.png")
+    plt.savefig(f"./outputs/learning_curve_history.png")
     #plt.show()
 
 

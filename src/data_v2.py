@@ -79,7 +79,7 @@ def get_image(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), path='../
 
 def augment(image):
 
-    random_transform = random.randint(-1,0)
+    random_transform = random.randint(-1,4)
     if random_transform==0:
         image = image.rotate(random.randint(-5,5))
     if random_transform==1:

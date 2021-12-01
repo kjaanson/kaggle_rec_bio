@@ -8,6 +8,9 @@ from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D, Inpu
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import Sequence
 
+from tensorflow.keras import layers
+from tensorflow import keras
+
 from tensorflow.keras.applications import EfficientNetB0,EfficientNetB1
 
 def create_first_model():
@@ -31,7 +34,38 @@ def create_first_model():
     
     return model
 
+def create_cnn_model_2(learning_rate=0.00002, nr_classes=1108):
+    """
+    CNN model based on latest archidecture in prototype
+    """
 
+    model = keras.Sequential(
+        [
+            keras.Input(shape=(6,224,224)),
+            layers.Conv2D(64, kernel_size=(1, 1), activation="relu", padding="same", input_shape=(6,224,224), data_format="channels_first"),
+            layers.Conv2D(64, kernel_size=(4, 4), activation="relu", padding="same", data_format="channels_first"),
+            layers.MaxPooling2D(pool_size=(2, 2), data_format="channels_first"),
+            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same", data_format="channels_first"),
+            layers.Conv2D(128, kernel_size=(3, 3), activation="relu", padding="same", data_format="channels_first"),
+            layers.AveragePooling2D(pool_size=(2, 2), data_format="channels_first"),
+            layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same", data_format="channels_first"),
+            #layers.Conv2D(256, kernel_size=(3, 3), activation="relu", padding="same"),
+            layers.AveragePooling2D(pool_size=(3, 3), data_format="channels_first"),
+            layers.SpatialDropout2D(0.5, data_format="channels_first"),
+            layers.Flatten(),
+            layers.Dense(512, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
+            layers.Dropout(0.5),
+            layers.Dense(256, activation='relu', kernel_initializer='he_uniform', kernel_regularizer='l2'),
+            layers.Dropout(0.5),
+            layers.Dense(128, activation='relu'),
+            layers.Dropout(0.5),
+            layers.Dense(nr_classes, activation="softmax"),
+        ]
+    )
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate), metrics=['accuracy'])
+    model.summary()
+
+    return model
 
 def create_cnn_model(learning_rate=0.001):
     """
