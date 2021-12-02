@@ -34,6 +34,42 @@ def create_first_model():
     
     return model
 
+
+from tensorflow.keras.applications.inception_v3 import InceptionV3
+def create_inception(learning_rate=0.0001, nr_classes=1108, input_shape=(6,224,224)):
+    input_tensor = Input(shape=input_shape)
+
+    layer_1 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(input_tensor)
+    layer_1 = layers.Conv2D(10, (3, 3), activation='relu', padding='same', data_format='channels_first')(layer_1)
+
+    layer_2 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(input_tensor)
+    layer_2 = layers.Conv2D(10, (5, 5), activation='relu', padding='same', data_format='channels_first')(layer_2)
+
+    layer_3 = layers.MaxPooling2D(pool_size=(3, 3), strides=(1,1), padding='same', data_format='channels_first')(input_tensor)
+    layer_3 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(layer_3)
+
+    mid = layers.concatenate([layer_1, layer_2, layer_3], axis=3)
+
+    flat_1 = layers.Flatten()(mid)
+    dense_1 = layers.Dense(256, activation='relu')(flat_1)
+    dense_1 = layers.Dropout(0.5)(dense_1)
+    dense_2 = layers.Dense(128, activation='relu')(dense_1)
+    dense_2 = layers.Dropout(0.5)(dense_2)
+    dense_3 = layers.Dense(64, activation='relu')(dense_2)
+    dense_3 = layers.Dropout(0.5)(dense_3)
+    dense_4 = layers.Dense(nr_classes, activation='softmax')(dense_3)
+
+    model = Model(inputs=input_tensor, outputs=dense_4)
+
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate), metrics=['accuracy'])
+    model.summary()
+
+    return model
+
+
+
+
+
 def create_cnn_model_2(learning_rate=0.00002, nr_classes=1108):
     """
     CNN model based on latest archidecture in prototype

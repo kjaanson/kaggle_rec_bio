@@ -4,8 +4,17 @@ import pytest
 from sklearn.preprocessing import LabelEncoder
 
 from scripts.data_v2 import ImgGen, random_subbox_and_augment
+from scripts.models import create_inception
 
 
+def test_create_inception_model():
+    """
+    Test the creation of the inception model
+    """
+
+    inception_model = create_inception()
+
+    assert inception_model is not None
 
 
 @pytest.fixture(scope="module")

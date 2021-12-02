@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
     run = Run.get_context()
     # %%
-    model = models.create_cnn_model_2(learning_rate=args.learning_rate, nr_classes=len(sirna_label_encoder_sample_1.classes_))
+    model = models.create_inception(learning_rate=args.learning_rate, nr_classes=len(sirna_label_encoder_sample_1.classes_))
 
     # %%
     test_size = 0.3
