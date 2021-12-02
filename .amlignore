@@ -4,3 +4,5 @@
 .ipynb_aml_checkpoints/ 
 *.amltmp 
 *.amltemp
+.pytest_cache
+__pycache__

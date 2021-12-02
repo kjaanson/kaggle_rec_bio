@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from sklearn.preprocessing import LabelEncoder
 
-from src.data_v2 import ImgGen, random_subbox_and_augment
+from scripts.data_v2 import ImgGen, random_subbox_and_augment
 
 
 

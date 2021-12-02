@@ -222,4 +222,3 @@ dependencies:
   - zipp=3.6.0
   - zlib=1.2.11
   - zstd=1.5.0
-prefix: /home/kaur/miniconda3/envs/kaggle_recbio
