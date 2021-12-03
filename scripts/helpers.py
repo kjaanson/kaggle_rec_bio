@@ -1,9 +1,9 @@
-
 import random
 
 import tensorflow.keras as keras
 
 import time
+
 
 class CheckpointCallback(keras.callbacks.Callback):
     def __init__(self, run):
@@ -20,15 +20,15 @@ class CheckpointCallback(keras.callbacks.Callback):
         return
 
     def on_epoch_end(self, epoch, logs={}):
-        self.run.log('Training accuracy', logs.get('accuracy'))
-        self.run.log('Training loss', logs.get('loss'))
-        self.run.log('Validation accuracy', logs.get('val_accuracy'))
-        self.run.log('Validation loss', logs.get('val_loss'))
-        
-        epoch_time=time.time() - self.epoch_time_start
-        
-        self.run.log('Epoch time', epoch_time)
-        
+        self.run.log("Training accuracy", logs.get("accuracy"))
+        self.run.log("Training loss", logs.get("loss"))
+        self.run.log("Validation accuracy", logs.get("val_accuracy"))
+        self.run.log("Validation loss", logs.get("val_loss"))
+
+        epoch_time = time.time() - self.epoch_time_start
+
+        self.run.log("Epoch time", epoch_time)
+
         return
 
     def on_batch_begin(self, batch, logs={}):
@@ -39,9 +39,8 @@ class CheckpointCallback(keras.callbacks.Callback):
 
     def on_batch_end(self, batch, logs={}):
 
-        batch_time=time.time() - self.batch_time_start
+        batch_time = time.time() - self.batch_time_start
 
-        self.run.log('Batch time', batch_time)
-        
+        self.run.log("Batch time", batch_time)
+
         return
-

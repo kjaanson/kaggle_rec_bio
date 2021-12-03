@@ -11,15 +11,24 @@ import sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.applications import EfficientNetB0,EfficientNetB1
+from tensorflow.keras.applications import EfficientNetB0, EfficientNetB1
 from tensorflow.python.client import device_lib
 import tensorflow.keras as keras
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D, Input, concatenate, Convolution2D, MaxPool2D, Flatten
+from tensorflow.keras.layers import (
+    Dense,
+    Dropout,
+    GlobalAveragePooling2D,
+    Input,
+    concatenate,
+    Convolution2D,
+    MaxPool2D,
+    Flatten,
+)
 from tensorflow.keras.utils import Sequence
-import os, sys, random,copy
+import os, sys, random, copy
 import matplotlib.pyplot as plt
 
 from PIL import Image
@@ -38,7 +47,7 @@ from tqdm import tqdm
 # In[3]:
 
 
-sys.path.append('../src')
+sys.path.append("../src")
 
 
 # In[4]:
@@ -53,11 +62,11 @@ from data_v2 import ImgGen
 # In[5]:
 
 
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 
 
 # Loading test and train data.
-# 
+#
 # Will load directly from zip for now.
 
 # In[6]:
@@ -72,7 +81,7 @@ print(f"Sirna classes in train_data_all {len(sirna_label_encoder_all.classes_)}"
 # In[10]:
 
 
-train_data_all[['cell_line','exp']]=list(train_data_all.experiment.str.split('-'))
+train_data_all[["cell_line", "exp"]] = list(train_data_all.experiment.str.split("-"))
 
 
 # Võtame esialgu ainul HUVEC liini
@@ -80,17 +89,19 @@ train_data_all[['cell_line','exp']]=list(train_data_all.experiment.str.split('-'
 # In[18]:
 
 
-train_data_all.loc[train_data_all.cell_line=='HUVEC',:]
+train_data_all.loc[train_data_all.cell_line == "HUVEC", :]
 
-train_data_strat=train_data_all.groupby('sirna',group_keys=False).apply(lambda x: x.sample(frac=0.25).reset_index(drop=True))
-
+train_data_strat = train_data_all.groupby("sirna", group_keys=False).apply(
+    lambda x: x.sample(frac=0.25).reset_index(drop=True)
+)
 
 
 # In[56]:
 
 
-
-train_data_sample = train_data_strat.sample(frac=1,random_state=42).reset_index(drop=True)
+train_data_sample = train_data_strat.sample(frac=1, random_state=42).reset_index(
+    drop=True
+)
 print("Shape of train_data_sample:", train_data_sample.shape)
 sirna_label_encoder = LabelEncoder().fit(train_data_sample.sirna)
 print(f"Sirna classes in train_data_all {len(sirna_label_encoder.classes_)}")
@@ -111,7 +122,12 @@ batch_size = 32
 # In[53]:
 
 
-train, val = train_test_split(train_data_sample, test_size=test_size, stratify=train_data_sample.sirna, random_state=42)
+train, val = train_test_split(
+    train_data_sample,
+    test_size=test_size,
+    stratify=train_data_sample.sirna,
+    random_state=42,
+)
 
 
 # In[59]:
@@ -124,8 +140,22 @@ print(f"Validation set size {len(val)}")
 # In[61]:
 
 
-train_gen = ImgGen(train,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder, path='../data/train.zip')
-val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder, path='../data/train.zip')
+train_gen = ImgGen(
+    train,
+    batch_size=batch_size,
+    preprocess=get_center_box,
+    shuffle=True,
+    label_encoder=sirna_label_encoder,
+    path="../data/train.zip",
+)
+val_gen = ImgGen(
+    val,
+    batch_size=batch_size,
+    preprocess=get_center_box,
+    shuffle=True,
+    label_encoder=sirna_label_encoder,
+    path="../data/train.zip",
+)
 
 
 # In[63]:
@@ -156,17 +186,13 @@ import joblib
 # In[ ]:
 
 
-joblib.dump(train_gen,'../data/train.pkl')
+joblib.dump(train_gen, "../data/train.pkl")
 
 
 # In[ ]:
 
 
-joblib.dump(val_gen,'../data/val.pkl')
+joblib.dump(val_gen, "../data/val.pkl")
 
 
 # In[ ]:
-
-
-
-
