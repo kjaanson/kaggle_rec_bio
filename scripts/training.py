@@ -104,6 +104,8 @@ if __name__ == "__main__":
     # %%
     model = models.create_inception(learning_rate=args.learning_rate, nr_classes=len(sirna_label_encoder_sample_1.classes_))
 
+    tf.keras.utils.plot_model(model, to_file='./outputs/model.png', show_shapes=True)
+
     # %%
     test_size = 0.3
     batch_size = args.batch_size
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     
 
     # %%
-    train_gen = ImgGen(train,batch_size=batch_size,preprocess=random_subbox_and_augment,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path=f'{data_path}/train/',cache=True)
+    train_gen = ImgGen(train,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path=f'{data_path}/train/',cache=True)
     val_gen = ImgGen(val,batch_size=batch_size,preprocess=get_center_box,shuffle=True,label_encoder=sirna_label_encoder_sample_1, path=f'{data_path}/train/',cache=True)
 
     # %%

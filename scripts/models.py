@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import transpose
 import tensorflow as tf
 
 import tensorflow.keras as keras
@@ -35,18 +36,19 @@ def create_first_model():
     return model
 
 
-from tensorflow.keras.applications.inception_v3 import InceptionV3
 def create_inception(learning_rate=0.0001, nr_classes=1108, input_shape=(6,224,224)):
     input_tensor = Input(shape=input_shape)
 
-    layer_1 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(input_tensor)
-    layer_1 = layers.Conv2D(10, (3, 3), activation='relu', padding='same', data_format='channels_first')(layer_1)
+    transpose_layer = layers.Permute((3, 2, 1))(input_tensor)
 
-    layer_2 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(input_tensor)
-    layer_2 = layers.Conv2D(10, (5, 5), activation='relu', padding='same', data_format='channels_first')(layer_2)
+    layer_1 = layers.Conv2D(10, (1, 1), activation='relu', padding='same')(transpose_layer)
+    layer_1 = layers.Conv2D(10, (3, 3), activation='relu', padding='same')(layer_1)
 
-    layer_3 = layers.MaxPooling2D(pool_size=(3, 3), strides=(1,1), padding='same', data_format='channels_first')(input_tensor)
-    layer_3 = layers.Conv2D(10, (1, 1), activation='relu', padding='same', data_format='channels_first')(layer_3)
+    layer_2 = layers.Conv2D(10, (1, 1), activation='relu', padding='same')(transpose_layer)
+    layer_2 = layers.Conv2D(10, (5, 5), activation='relu', padding='same')(layer_2)
+
+    layer_3 = layers.MaxPooling2D(pool_size=(3, 3), strides=(1,1), padding='same')(transpose_layer)
+    layer_3 = layers.Conv2D(10, (1, 1), activation='relu', padding='same')(layer_3)
 
     mid = layers.concatenate([layer_1, layer_2, layer_3], axis=3)
 

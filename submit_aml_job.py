@@ -74,7 +74,7 @@ if __name__ == "__main__":
         script=args.script,
         arguments=[
                 '--data-path', dataset.as_mount(),
-                '--epochs', 2000,
+                '--epochs', 1000,
                 '--batch', 24,
                 ],
         compute_target=instance,
