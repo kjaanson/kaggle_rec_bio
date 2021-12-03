@@ -77,7 +77,9 @@ def get_image(experiment, plate, well, site=1, channels=(1,2,3,4,5,6), path='../
 
     return img_channels
 
-def augment(image):
+def augment(image, seed=None):
+
+    random.seed(seed)
 
     random_transform = random.randint(-1,4)
     if random_transform==0:
@@ -101,8 +103,10 @@ def get_center_box(image, shape_w_h=(224,224)):
     return image.crop(cropbox)
 
 
-def get_random_subbox(image, shape_w_h=(224,224)):
+def get_random_subbox(image, shape_w_h=(224,224), seed=42):
     
+    random.seed(seed)
+
     w = image.width
     h = image.height
     
@@ -121,17 +125,17 @@ def get_random_subbox(image, shape_w_h=(224,224)):
     
     return cropped
 
-def random_subbox_and_augment(image):
+def random_subbox_and_augment(image, seed=None):
     """
     Randomly crops image to 224x224 and augments it
     """
-    cropped = get_random_subbox(image)
-    return augment(cropped)
+    cropped = get_random_subbox(image, seed=seed)
+    return augment(cropped, seed=seed)
 
-def preprocess_and_scale(img_channels, preprocess):
+def preprocess_and_scale(img_channels, preprocess, seed=42):
 
     logger.info("Preprocessing images")
-    img_prepro = [preprocess(img) for img in img_channels]
+    img_prepro = [preprocess(img, seed=seed) for img in img_channels]
 
     logger.info("Scaling channels")
     x_s1_c1 = np.array(img_prepro[0])/255
@@ -218,7 +222,10 @@ class ImgGen(Sequence):
 
         logger.info("Starting preprocessing")
 
-        x = [preprocess_and_scale(img, self.preprocess) for img in x_images]        
+        #get seed for consistent random augmentation
+        seed = random.randint(0,2**32-1)
+
+        x = [preprocess_and_scale(img, self.preprocess, seed=seed) for img in x_images]
         #wanted to use this but it was too slow
         #x = Parallel(n_jobs=-1)(delayed(preprocess_and_scale)(img, self.preprocess) for img in x_images)
         
