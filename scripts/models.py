@@ -57,20 +57,20 @@ def create_inception(learning_rate=0.0001, nr_classes=1108, input_shape=(6, 224,
 
     transpose_layer = layers.Permute((3, 2, 1))(input_tensor)
 
-    layer_1 = layers.Conv2D(10, (1, 1), activation="relu", padding="same")(
+    layer_1 = layers.Conv2D(12, (1, 1), activation="relu", padding="same")(
         transpose_layer
     )
-    layer_1 = layers.Conv2D(10, (3, 3), activation="relu", padding="same")(layer_1)
+    layer_1 = layers.Conv2D(12, (3, 3), activation="relu", padding="same")(layer_1)
 
-    layer_2 = layers.Conv2D(10, (1, 1), activation="relu", padding="same")(
+    layer_2 = layers.Conv2D(12, (1, 1), activation="relu", padding="same")(
         transpose_layer
     )
-    layer_2 = layers.Conv2D(10, (5, 5), activation="relu", padding="same")(layer_2)
+    layer_2 = layers.Conv2D(12, (5, 5), activation="relu", padding="same")(layer_2)
 
     layer_3 = layers.MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding="same")(
         transpose_layer
     )
-    layer_3 = layers.Conv2D(10, (1, 1), activation="relu", padding="same")(layer_3)
+    layer_3 = layers.Conv2D(12, (1, 1), activation="relu", padding="same")(layer_3)
 
     mid = layers.concatenate([layer_1, layer_2, layer_3], axis=3)
 
@@ -95,14 +95,15 @@ def create_inception(learning_rate=0.0001, nr_classes=1108, input_shape=(6, 224,
     return model
 
 
-def create_cnn_model_2(learning_rate=0.00002, nr_classes=1108):
+def create_cnn_model_2(learning_rate=0.00002, nr_classes=1108, input_shape=(6, 224, 224)):
     """
     CNN model based on latest archidecture in prototype
     """
 
     model = keras.Sequential(
         [
-            keras.Input(shape=(6, 224, 224)),
+            keras.Input(shape=input_shape),
+            layers.Permute((3, 2, 1)),
             layers.Conv2D(
                 64,
                 kernel_size=(1, 1),
