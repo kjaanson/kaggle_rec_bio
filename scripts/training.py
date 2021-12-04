@@ -93,7 +93,10 @@ if __name__ == "__main__":
         nr_classes=len(sirna_label_encoder_sample_1.classes_),
     )
 
-    tf.keras.utils.plot_model(model, to_file="./outputs/model.png", show_shapes=True)
+    try:
+        tf.keras.utils.plot_model(model, to_file="./outputs/model.png", show_shapes=True)
+    except ImportError as e:
+        print(f"Cannot plot model: {e}")
 
     test_size = 0.3
     batch_size = args.batch_size

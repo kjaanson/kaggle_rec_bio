@@ -86,7 +86,7 @@ def augment(image, seed=None):
 
     random.seed(seed)
 
-    random_transform = random.randint(-1, 4)
+    random_transform = random.randint(-1, 1)
     if random_transform == 0:
         image = image.rotate(random.randint(-5, 5))
     if random_transform == 1:
@@ -100,7 +100,7 @@ def augment(image, seed=None):
     return image
 
 
-def get_center_box(image, shape_w_h=(224, 224)):
+def get_center_box(image, shape_w_h=(224, 224), seed=42):
 
     cropbox = (144, 144, 144 + shape_w_h[0], 144 + shape_w_h[1])
 

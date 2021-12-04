@@ -71,6 +71,8 @@ if __name__ == "__main__":
             1000,
             "--batch",
             24,
+            "--learning-rate",
+            0.001,
         ],
         compute_target=instance,
         environment=tf_env,
